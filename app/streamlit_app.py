@@ -306,6 +306,7 @@ def predict_prophet(model, hist_df, horizon):
         last_row["volatility"]
     )
 
+    
     future["volume_norm"] = (
         last_row["volume_norm"]
     )
