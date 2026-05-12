@@ -160,8 +160,7 @@ def make_lstm_sequence(
 
 
 def _load_pickle(path: Path):
-    with path.open("rb") as f:
-        return pickle.load(f)
+    return joblib.load(path)
 
 
 # =========================================================
