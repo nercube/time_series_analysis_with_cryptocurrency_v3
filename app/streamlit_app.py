@@ -237,25 +237,55 @@ def predict_arima(model, horizon):
 
 def predict_prophet(model, hist_df, horizon):
 
+    hist_df = hist_df.copy()
+
+    # =====================================================
+    # Force numeric cleanup
+    # =====================================================
+
+    numeric_cols = [
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+    ]
+
+    for col in numeric_cols:
+
+        hist_df[col] = pd.to_numeric(
+            hist_df[col],
+            errors="coerce"
+        )
+
+    hist_df = hist_df.replace(
+        [np.inf, -np.inf],
+        np.nan
+    )
+
+    hist_df = hist_df.dropna()
+
+    # =====================================================
+    # Base Prophet dataframe
+    # =====================================================
+
     prophet_df = pd.DataFrame({
         "ds": hist_df.index,
         "y": hist_df["Close"].values,
     })
 
     # =====================================================
-    # BTC Prophet regressors compatibility
+    # BTC regressors
     # =====================================================
 
     prophet_df["returns"] = (
         hist_df["Close"]
         .pct_change()
-        .fillna(0)
     )
 
     prophet_df["log_returns"] = (
         np.log(hist_df["Close"])
         .diff()
-        .fillna(0)
     )
 
     prophet_df["volatility"] = (
@@ -278,8 +308,20 @@ def predict_prophet(model, hist_df, horizon):
         hist_df["Close"]
         .rolling(7)
         .mean()
-        .bfill()
     )
+
+    # =====================================================
+    # FINAL NaN cleanup
+    # =====================================================
+
+    prophet_df = prophet_df.replace(
+        [np.inf, -np.inf],
+        np.nan
+    )
+
+    prophet_df = prophet_df.bfill().ffill()
+
+    prophet_df = prophet_df.dropna()
 
     # =====================================================
     # Future dataframe
@@ -290,28 +332,27 @@ def predict_prophet(model, hist_df, horizon):
         freq="D",
     )
 
-    # =====================================================
-    # Fill future regressors
-    # =====================================================
-
     last_row = prophet_df.iloc[-1]
 
-    future["returns"] = last_row["returns"]
+    future["returns"] = float(
+        last_row["returns"]
+    )
 
-    future["log_returns"] = (
+    future["log_returns"] = float(
         last_row["log_returns"]
     )
 
-    future["volatility"] = (
+    future["volatility"] = float(
         last_row["volatility"]
     )
 
-    
-    future["volume_norm"] = (
+    future["volume_norm"] = float(
         last_row["volume_norm"]
     )
 
-    future["ma7"] = last_row["ma7"]
+    future["ma7"] = float(
+        last_row["ma7"]
+    )
 
     # =====================================================
     # Forecast
@@ -322,7 +363,6 @@ def predict_prophet(model, hist_df, horizon):
     preds = forecast["yhat"].tail(horizon)
 
     return preds.to_numpy(dtype=float)
-
 
 def predict_lstm(
     model,
