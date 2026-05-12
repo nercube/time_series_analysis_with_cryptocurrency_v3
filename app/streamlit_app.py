@@ -8,7 +8,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-import yfinance as yf
 
 from tensorflow.keras.models import load_model
 
@@ -17,7 +16,10 @@ from tensorflow.keras.models import load_model
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
+
 MODELS_DIR = BASE_DIR.parent / "models"
+
+DATA_DIR = BASE_DIR.parent / "data"
 
 FEATURE_COLUMNS = [
     "Open",
@@ -35,6 +37,7 @@ FEATURE_COLUMNS = [
 CRYPTO_CONFIG = {
     "Bitcoin (BTC)": {
         "ticker": "BTC-USD",
+        "data": "btc.csv",
         "coingecko": "bitcoin",
         "arima": "arima_model.pkl",
         "prophet": "prophet_model.pkl",
@@ -43,6 +46,7 @@ CRYPTO_CONFIG = {
     },
     "Ethereum (ETH)": {
         "ticker": "ETH-USD",
+        "data": "eth.csv",
         "coingecko": "ethereum",
         "arima": "eth_arima.pkl",
         "prophet": "eth_prophet (1).pkl",
@@ -51,6 +55,7 @@ CRYPTO_CONFIG = {
     },
     "Tether (USDT)": {
         "ticker": "USDT-USD",
+        "data": "usdt.csv",
         "coingecko": "tether",
         "arima": "usdt_arima.pkl",
         "prophet": "usdt_prophet (1).pkl",
@@ -169,22 +174,19 @@ def _load_pickle(path: Path):
 # =========================================================
 
 @st.cache_data(ttl=600)
-def load_price_history(ticker: str):
-    df = yf.download(
-        ticker,
-        period="2y",
-        interval="1d",
-        auto_adjust=False,
-        progress=False,
-    )
+def load_price_history(crypto_key: str):
 
-    if df.empty:
-        raise RuntimeError(f"No data returned for {ticker}")
+    cfg = CRYPTO_CONFIG[crypto_key]
 
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
+    csv_path = DATA_DIR / cfg["data"]
 
-    df.index = pd.to_datetime(df.index).tz_localize(None)
+    df = pd.read_csv(csv_path)
+
+    df["Date"] = pd.to_datetime(df["Date"])
+
+    df.set_index("Date", inplace=True)
+
+    df.index = df.index.tz_localize(None)
 
     return df
 
@@ -210,11 +212,9 @@ def load_models(crypto_key: str):
         compile=False
     )
 
-    scaler_path = MODELS_DIR / cfg["scaler"]
-
-    st.write("Loading scaler:", scaler_path)
-
-    scaler = _load_pickle(scaler_path)
+    scaler = _load_pickle(
+        MODELS_DIR / cfg["scaler"]
+    )
 
     return (
         arima_model,
@@ -359,13 +359,7 @@ def render_dashboard(crypto_key: str):
 
     cfg = CRYPTO_CONFIG[crypto_key]
 
-    ticker = cfg["ticker"]
-
     st.title(f"{crypto_key} Forecast Dashboard")
-
-    # =====================================================
-    # SIDEBAR
-    # =====================================================
 
     with st.sidebar:
 
@@ -393,11 +387,7 @@ def render_dashboard(crypto_key: str):
             value=True,
         )
 
-    # =====================================================
-    # LOAD DATA + MODELS
-    # =====================================================
-
-    price_df = load_price_history(ticker)
+    price_df = load_price_history(crypto_key)
 
     (
         arima_model,
@@ -405,10 +395,6 @@ def render_dashboard(crypto_key: str):
         lstm_model,
         scaler,
     ) = load_models(crypto_key)
-
-    # =====================================================
-    # PREDICTIONS
-    # =====================================================
 
     preds = {}
 
@@ -433,18 +419,10 @@ def render_dashboard(crypto_key: str):
             horizon,
         )
 
-    # =====================================================
-    # LAYOUT
-    # =====================================================
-
     left_col, right_col = st.columns(
         [3.2, 1.2],
         gap="large",
     )
-
-    # =====================================================
-    # LEFT SIDE
-    # =====================================================
 
     with left_col:
 
@@ -526,10 +504,6 @@ def render_dashboard(crypto_key: str):
                 use_container_width=True,
             )
 
-    # =====================================================
-    # RIGHT SIDE
-    # =====================================================
-
     with right_col:
 
         st.subheader("Market Snapshot")
@@ -581,10 +555,6 @@ def render_dashboard(crypto_key: str):
             unsafe_allow_html=True,
         )
 
-
-# =========================================================
-# APP ENTRY
-# =========================================================
 
 selected_crypto = st.sidebar.radio(
     "Choose Cryptocurrency",
