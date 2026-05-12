@@ -1,0 +1,13 @@
+streamlit
+plotly
+numpy
+pandas
+yfinance
+scikit-learn
+tensorflow
+keras
+prophet
+pmdarima
+requests
+joblib
+feedparser
