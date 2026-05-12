@@ -9,7 +9,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 
 # =========================================================
 # CONFIG
