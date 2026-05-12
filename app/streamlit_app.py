@@ -210,9 +210,11 @@ def load_models(crypto_key: str):
         compile=False
     )
 
-    scaler = _load_pickle(
-        MODELS_DIR / cfg["scaler"]
-    )
+    scaler_path = MODELS_DIR / cfg["scaler"]
+
+    st.write("Loading scaler:", scaler_path)
+
+    scaler = _load_pickle(scaler_path)
 
     return (
         arima_model,
@@ -372,8 +374,8 @@ def render_dashboard(crypto_key: str):
         horizon = st.slider(
             "Forecast horizon (days)",
             min_value=1,
-            max_value=30,
-            value=7,
+            max_value=90,
+            value=30,
         )
 
         use_arima = st.checkbox(
