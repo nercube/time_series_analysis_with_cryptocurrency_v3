@@ -206,7 +206,8 @@ def load_models(crypto_key: str):
     )
 
     lstm_model = load_model(
-        MODELS_DIR / cfg["lstm"]
+        MODELS_DIR / cfg["lstm"],
+        compile=False
     )
 
     scaler = _load_pickle(
