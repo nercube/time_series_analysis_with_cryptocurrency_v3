@@ -236,15 +236,85 @@ def predict_arima(model, horizon):
 
 
 def predict_prophet(model, hist_df, horizon):
+
     prophet_df = pd.DataFrame({
         "ds": hist_df.index,
         "y": hist_df["Close"].values,
     })
 
+    # =====================================================
+    # BTC Prophet regressors compatibility
+    # =====================================================
+
+    prophet_df["returns"] = (
+        hist_df["Close"]
+        .pct_change()
+        .fillna(0)
+    )
+
+    prophet_df["log_returns"] = (
+        np.log(hist_df["Close"])
+        .diff()
+        .fillna(0)
+    )
+
+    prophet_df["volatility"] = (
+        hist_df["High"]
+        - hist_df["Low"]
+    )
+
+    prophet_df["volume_norm"] = (
+        (
+            hist_df["Volume"]
+            - hist_df["Volume"].mean()
+        )
+        / (
+            hist_df["Volume"].std()
+            + 1e-9
+        )
+    )
+
+    prophet_df["ma7"] = (
+        hist_df["Close"]
+        .rolling(7)
+        .mean()
+        .bfill()
+    )
+
+    # =====================================================
+    # Future dataframe
+    # =====================================================
+
     future = model.make_future_dataframe(
         periods=horizon,
         freq="D",
     )
+
+    # =====================================================
+    # Fill future regressors
+    # =====================================================
+
+    last_row = prophet_df.iloc[-1]
+
+    future["returns"] = last_row["returns"]
+
+    future["log_returns"] = (
+        last_row["log_returns"]
+    )
+
+    future["volatility"] = (
+        last_row["volatility"]
+    )
+
+    future["volume_norm"] = (
+        last_row["volume_norm"]
+    )
+
+    future["ma7"] = last_row["ma7"]
+
+    # =====================================================
+    # Forecast
+    # =====================================================
 
     forecast = model.predict(future)
 
