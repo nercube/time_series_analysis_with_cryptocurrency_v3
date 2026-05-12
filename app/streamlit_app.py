@@ -1,5 +1,3 @@
-# Corrected Multi‑Crypto Streamlit Dashboard
-
 import datetime as dt
 from pathlib import Path
 import pickle
@@ -18,7 +16,7 @@ from keras.models import load_model
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR = BASE_DIR.parent / "models"
 
 FEATURE_COLUMNS = [
     "Open",
@@ -122,7 +120,6 @@ def compute_rsi(close: pd.Series, period: int = 14):
     return rsi.fillna(50)
 
 
-
 def create_features(df: pd.DataFrame):
     feat = df.copy()
 
@@ -145,7 +142,6 @@ def create_features(df: pd.DataFrame):
     return feat
 
 
-
 def make_lstm_sequence(
     feat_df,
     feature_cols,
@@ -161,7 +157,6 @@ def make_lstm_sequence(
     X = np.expand_dims(last_window, axis=0)
 
     return X
-
 
 
 def _load_pickle(path: Path):
@@ -237,7 +232,6 @@ def predict_arima(model, horizon):
     return np.asarray(preds, dtype=float)
 
 
-
 def predict_prophet(model, hist_df, horizon):
     prophet_df = pd.DataFrame({
         "ds": hist_df.index,
@@ -254,7 +248,6 @@ def predict_prophet(model, hist_df, horizon):
     preds = forecast["yhat"].tail(horizon)
 
     return preds.to_numpy(dtype=float)
-
 
 
 def predict_lstm(
